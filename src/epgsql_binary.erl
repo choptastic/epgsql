@@ -53,9 +53,9 @@ encode(_Any, null, _)                       -> <<-1:?int32>>;
 encode(_Any, undefined, _)                  -> <<-1:?int32>>;
 encode(bool, true, _)                       -> <<1:?int32, 1:1/big-signed-unit:8>>;
 encode(bool, false, _)                      -> <<1:?int32, 0:1/big-signed-unit:8>>;
-encode(int2, N, _)                          -> <<2:?int32, N:1/big-signed-unit:16>>;
-encode(int4, N, _)                          -> <<4:?int32, N:1/big-signed-unit:32>>;
-encode(int8, N, _)                          -> <<8:?int32, N:1/big-signed-unit:64>>;
+encode(int2, N, _)                          -> <<2:?int32, (normalize_int(N)):1/big-signed-unit:16>>;
+encode(int4, N, _)                          -> <<4:?int32, (normalize_int(N)):1/big-signed-unit:32>>;
+encode(int8, N, _)                          -> <<8:?int32, (normalize_int(N)):1/big-signed-unit:64>>;
 encode(float4, N, _)                        -> <<4:?int32, N:1/big-float-unit:32>>;
 encode(float8, N, _)                        -> <<8:?int32, N:1/big-float-unit:64>>;
 encode(bpchar, C, _) when is_integer(C)     -> <<1:?int32, C:1/big-unsigned-unit:8>>;
@@ -80,6 +80,10 @@ encode(inet, B, Codec)                      -> encode(bytea, encode_net(B), Code
 encode(int4range, R, _) when is_tuple(R)    -> encode_int4range(R);
 encode(Type, L, Codec) when is_list(L)      -> encode(Type, list_to_binary(L), Codec);
 encode(_Type, _Value, _)                    -> {error, unsupported}.
+
+normalize_int(B) when is_binary(B) 		-> list_to_integer(binary_to_list(B));
+normalize_int(L) when is_list(L) 		-> list_to_integer(L);
+normalize_int(I) when is_integer(I) 	-> I.
 
 decode(bool, <<1:1/big-signed-unit:8>>, _)     -> true;
 decode(bool, <<0:1/big-signed-unit:8>>, _)     -> false;
