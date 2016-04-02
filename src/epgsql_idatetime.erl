@@ -51,7 +51,7 @@ j2date(N) ->
     Month = (Q3 + 10) rem 12 + 1,
     {Year, Month, Day}.
 
-date2j(DateStr) when is_list(DateStr), is_binary(DateStr) ->
+date2j(DateStr) when is_list(DateStr); is_binary(DateStr) ->
     RE = "(\\d{4})-(\\d{1,2})-(\\d{1,2})",
     case re:run(DateStr, RE, [{capture, all_but_first, list}]) of
         nomatch ->
