@@ -51,6 +51,15 @@ j2date(N) ->
     Month = (Q3 + 10) rem 12 + 1,
     {Year, Month, Day}.
 
+date2j(DateStr) when is_list(DateStr), is_binary(DateStr) ->
+    RE = "(\\d{4})-(\\d{1,2})-(\\d{1,2})",
+    case re:run(DateStr, RE, [{capture, all_but_first, list}]) of
+        nomatch ->
+            exit({invalid_date_format, DateStr});
+        {match, [Y,M,D]} ->
+            Date = {list_to_integer(Y), list_to_integer(M), list_to_integer(D)},
+            date2j(Date)
+    end;
 date2j({Y, M, D}) ->
     M2 = case M > 2 of
         true ->
