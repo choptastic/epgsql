@@ -52,7 +52,7 @@ j2date(N) ->
     {Year, Month, Day}.
 
 date2j(DateStr) when is_list(DateStr); is_binary(DateStr) ->
-    RE = "(\\d{4})-(\\d{1,2})-(\\d{1,2})",
+    RE = "^(\\d{4})-(\\d{1,2})-(\\d{1,2})$",
     case re:run(DateStr, RE, [{capture, all_but_first, list}]) of
         nomatch ->
             exit({invalid_date_format, DateStr});
@@ -87,6 +87,17 @@ i2time(N) ->
     US = R2 - Sec * ?usecs_per_sec,
     {Hour, Min, Sec + US / ?usecs_per_sec}.
 
+time2i(TimeStr) when is_list(TimeStr); is_binary(TimeStr) ->
+    RE = "^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?$",
+    Time = case re:run(TimeStr, RE, [{capture, all_but_first, list}]) of
+        nomatch ->
+            exit({invalid_time_format, TimeStr});
+        {match, [H, M]} ->
+            {list_to_integer(H), list_to_integer(M), 0};
+        {match, [H, M, S]} ->
+            {list_to_integer(H), list_to_integer(M), list_to_integer(S)}
+    end,
+    time2i(Time);
 time2i({H, M, S}) ->
     US = trunc(round(S * ?usecs_per_sec)),
     ((H * ?mins_per_hour + M) * ?secs_per_minute) * ?usecs_per_sec + US.
@@ -100,6 +111,13 @@ i2timestamp(N) ->
 i2timestamp2(D, T) ->
     {j2date(D), i2time(T)}.
 
+timestamp2i(DTStr) when is_list(DTStr); is_binary(DTStr) ->
+    case re:split(DTStr, "[\\sT]", [{return, list}]) of
+        [DateStr, TimeStr] ->
+            timestamp2i({DateStr, TimeStr});
+        _ ->
+            exit({invalid_datetime_format, DTStr})
+    end;
 timestamp2i({Date, Time}) ->
     D = date2j(Date) - ?postgres_epoc_jdate,
     D * ?usecs_per_day + time2i(Time).
