@@ -49,37 +49,44 @@ type2oid(Type, #codec{type2oid = Type2Oid}) ->
         Oid -> Oid
     end.
 
-encode(_Any, null, _)                       -> <<-1:?int32>>;
-encode(_Any, undefined, _)                  -> <<-1:?int32>>;
-encode(bool, true, _)                       -> <<1:?int32, 1:1/big-signed-unit:8>>;
-encode(bool, false, _)                      -> <<1:?int32, 0:1/big-signed-unit:8>>;
-encode(int2, N, _)                          -> <<2:?int32, (normalize_int(N)):1/big-signed-unit:16>>;
-encode(int4, N, _)                          -> <<4:?int32, (normalize_int(N)):1/big-signed-unit:32>>;
-encode(int8, N, _)                          -> <<8:?int32, (normalize_int(N)):1/big-signed-unit:64>>;
-encode(float4, N, _)                        -> <<4:?int32, N:1/big-float-unit:32>>;
-encode(float8, N, _)                        -> <<8:?int32, N:1/big-float-unit:64>>;
-encode(bpchar, C, _) when is_integer(C)     -> <<1:?int32, C:1/big-unsigned-unit:8>>;
-encode(bpchar, B, _) when is_binary(B)      -> <<(byte_size(B)):?int32, B/binary>>;
-encode(time = Type, B, _)                   -> ?datetime:encode(Type, B);
-encode(timetz = Type, B, _)                 -> ?datetime:encode(Type, B);
-encode(date = Type, B, _)                   -> ?datetime:encode(Type, B);
-encode(timestamp = Type, B, _)              -> ?datetime:encode(Type, B);
-encode(timestamptz = Type, B, _)            -> ?datetime:encode(Type, B);
-encode(interval = Type, B, _)               -> ?datetime:encode(Type, B);
-encode(bytea, B, _) when is_binary(B)       -> <<(byte_size(B)):?int32, B/binary>>;
-encode(text, B, _) when is_binary(B)        -> <<(byte_size(B)):?int32, B/binary>>;
-encode(varchar, B, _) when is_binary(B)     -> <<(byte_size(B)):?int32, B/binary>>;
-encode(uuid, B, _) when is_binary(B)        -> encode_uuid(B);
-encode({array, char}, L, Codec) when is_list(L) -> encode_array(bpchar, type2oid(bpchar, Codec), L, Codec);
-encode({array, Type}, L, Codec) when is_list(L) -> encode_array(Type, type2oid(Type, Codec), L, Codec);
-encode(hstore, {L}, _) when is_list(L)      -> encode_hstore(L);
-encode(point, {X,Y}, _)                     -> encode_point({X,Y});
-encode(geometry, Data, _)                   -> encode_geometry(Data);
-encode(cidr, B, Codec)                      -> encode(bytea, encode_net(B), Codec);
-encode(inet, B, Codec)                      -> encode(bytea, encode_net(B), Codec);
-encode(int4range, R, _) when is_tuple(R)    -> encode_int4range(R);
-encode(Type, L, Codec) when is_list(L)      -> encode(Type, list_to_binary(L), Codec);
-encode(_Type, _Value, _)                    -> {error, unsupported}.
+encode(Type, Val, Codec) ->
+    try encode_(Type, Val, Codec)
+    catch E:T ->
+        error_logger:warning_msg("Error attempting to encode ~p to type ~p (codec: ~p).~nConverting Unencodable value to null.~nError: Details: ~p:~p.~nStacktrace: ~p.",[Val, Type, Codec, E, T, erlang:get_stacktrace()]),
+        encode_(Type, null, Codec)
+    end.
+
+encode_(_Any, null, _)                       -> <<-1:?int32>>;
+encode_(_Any, undefined, _)                  -> <<-1:?int32>>;
+encode_(bool, true, _)                       -> <<1:?int32, 1:1/big-signed-unit:8>>;
+encode_(bool, false, _)                      -> <<1:?int32, 0:1/big-signed-unit:8>>;
+encode_(int2, N, _)                          -> <<2:?int32, (normalize_int(N)):1/big-signed-unit:16>>;
+encode_(int4, N, _)                          -> <<4:?int32, (normalize_int(N)):1/big-signed-unit:32>>;
+encode_(int8, N, _)                          -> <<8:?int32, (normalize_int(N)):1/big-signed-unit:64>>;
+encode_(float4, N, _)                        -> <<4:?int32, N:1/big-float-unit:32>>;
+encode_(float8, N, _)                        -> <<8:?int32, N:1/big-float-unit:64>>;
+encode_(bpchar, C, _) when is_integer(C)     -> <<1:?int32, C:1/big-unsigned-unit:8>>;
+encode_(bpchar, B, _) when is_binary(B)      -> <<(byte_size(B)):?int32, B/binary>>;
+encode_(time = Type, B, _)                   -> ?datetime:encode(Type, B);
+encode_(timetz = Type, B, _)                 -> ?datetime:encode(Type, B);
+encode_(date = Type, B, _)                   -> ?datetime:encode(Type, B);
+encode_(timestamp = Type, B, _)              -> ?datetime:encode(Type, B);
+encode_(timestamptz = Type, B, _)            -> ?datetime:encode(Type, B);
+encode_(interval = Type, B, _)               -> ?datetime:encode(Type, B);
+encode_(bytea, B, _) when is_binary(B)       -> <<(byte_size(B)):?int32, B/binary>>;
+encode_(text, B, _) when is_binary(B)        -> <<(byte_size(B)):?int32, B/binary>>;
+encode_(varchar, B, _) when is_binary(B)     -> <<(byte_size(B)):?int32, B/binary>>;
+encode_(uuid, B, _) when is_binary(B)        -> encode_uuid(B);
+encode_({array, char}, L, Codec) when is_list(L) -> encode_array(bpchar, type2oid(bpchar, Codec), L, Codec);
+encode_({array, Type}, L, Codec) when is_list(L) -> encode_array(Type, type2oid(Type, Codec), L, Codec);
+encode_(hstore, {L}, _) when is_list(L)      -> encode_hstore(L);
+encode_(point, {X,Y}, _)                     -> encode_point({X,Y});
+encode_(geometry, Data, _)                   -> encode_geometry(Data);
+encode_(cidr, B, Codec)                      -> encode(bytea, encode_net(B), Codec);
+encode_(inet, B, Codec)                      -> encode(bytea, encode_net(B), Codec);
+encode_(int4range, R, _) when is_tuple(R)    -> encode_int4range(R);
+encode_(Type, L, Codec) when is_list(L)      -> encode(Type, list_to_binary(L), Codec);
+encode_(_Type, _Value, _)                    -> {error, unsupported}.
 
 normalize_int(B) when is_binary(B) 		-> list_to_integer(binary_to_list(B));
 normalize_int(L) when is_list(L) 		-> list_to_integer(L);
